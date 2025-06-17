@@ -1,0 +1,40 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - main  # Se ejecutará en cada push a la rama 'main'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest  # Utiliza una máquina con Ubuntu para ejecutar el workflow
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2  # Clona tu repositorio
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'  # Configura la versión de Node.js
+
+      - name: Install dependencies
+        run: npm install  # Instala las dependencias del proyecto React
+
+      - name: Build React app
+        run: npm run build  # Ejecuta el build de la app React
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2  # Configura Docker Buildx para el build
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}  # Usa tu nombre de usuario de Docker Hub como secreto
+          password: ${{ secrets.DOCKER_PASSWORD }}  # Usa tu contraseña de Docker Hub como secreto
+
+      - name: Build Docker image
+        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/my-react-app:latest .  # Construye la imagen Docker
+
+      - name: Push Docker image
+        run: docker push ${{ secrets.DOCKER_USERNAME }}/my-react-app:latest  # Sube la imagen a Docker Hub
