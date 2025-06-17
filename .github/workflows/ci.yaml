@@ -22,7 +22,7 @@ jobs:
         run: npm install  # Instala las dependencias del proyecto React
 
       - name: Build React app
-        run: npm run build  # Ejecuta el build de la app React
+        run: npm run build  # Ejecuta el build de app React
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2  # Configura Docker Buildx para el build
