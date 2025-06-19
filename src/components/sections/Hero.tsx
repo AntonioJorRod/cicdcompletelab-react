@@ -127,7 +127,7 @@ export const Hero = () => {
         <HeroContent>
           <div>
             <Title role="heading" aria-level={2}>
-              Hi, I'm [Your Name]
+              Hi, I'm [Juan4]
             </Title>
             <Subtitle role="heading" aria-level={3}>
               Full Stack Developer
