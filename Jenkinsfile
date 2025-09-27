@@ -10,8 +10,7 @@ spec:
   containers:
   - name: node
     image: node:20
-    command:
-    - cat
+    command: [ "cat" ]
     tty: true
   - name: docker
     image: docker:24-dind
@@ -19,8 +18,11 @@ spec:
       privileged: true
   - name: kubectl
     image: bitnami/kubectl:1.30
-    command:
-    - cat
+    command: [ "cat" ]
+    tty: true
+  - name: tf
+    image: hashicorp/terraform:1.9
+    command: [ "cat" ]
     tty: true
 """
     }
@@ -49,10 +51,10 @@ spec:
           doGenerateSubmoduleConfigurations: false,
           extensions: [
             [$class: 'CloneOption',
-            depth: 1,
-            shallow: true,
-            noTags: false,
-            timeout: 10]
+             depth: 1,
+             shallow: true,
+             noTags: false,
+             timeout: 10]
           ],
           userRemoteConfigs: [[
             url: 'https://github.com/mi-org/cicdcompletelab-react.git',
@@ -62,8 +64,7 @@ spec:
       }
     }
 
-
-    stage('Matrix Build & Test') {
+    stage('Matrix Build & Unit Tests') {
       matrix {
         axes {
           axis {
@@ -82,8 +83,7 @@ spec:
   containers:
   - name: node
     image: node:\${NODE_VERSION}
-    command:
-    - cat
+    command: [ "cat" ]
     tty: true
 """
           }
@@ -106,12 +106,22 @@ spec:
       }
     }
 
-    stage('Lint & Build') {
+    stage('Static Analysis & Build') {
       parallel {
-        stage('Lint') {
+        stage('Lint React') {
           steps { sh 'npm run lint' }
         }
-        stage('Build') {
+        stage('Terraform Lint & Validate') {
+          agent { kubernetes { defaultContainer 'tf' } }
+          steps {
+            sh '''
+              terraform fmt -check -recursive
+              terraform validate
+              tflint --disable-rule=terraform_deprecated_interpolation || true
+            '''
+          }
+        }
+        stage('Build React') {
           steps { sh 'npm run build' }
           post {
             success {
@@ -145,9 +155,18 @@ spec:
             container('docker') {
               sh '''
                 docker build -t tmpimage:scan .
-                trivy image tmpimage:scan || true
+                trivy image --exit-code 0 --severity HIGH,CRITICAL tmpimage:scan
               '''
             }
+          }
+        }
+        stage('Terraform Security') {
+          agent { kubernetes { defaultContainer 'tf' } }
+          steps {
+            sh '''
+              tfsec .
+              checkov -d .
+            '''
           }
         }
       }
@@ -189,6 +208,7 @@ spec:
     }
 
     stage('Promote to Production') {
+      when { branch 'main' }
       input message: "¿Promover a PRODUCCIÓN?", ok: "Yes, deploy"
       steps {
         container('kubectl') {
