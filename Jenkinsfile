@@ -43,9 +43,25 @@ spec:
   stages {
     stage('Checkout') {
       steps {
-        checkout scm
+        checkout([
+          $class: 'GitSCM',
+          branches: [[name: env.BRANCH_NAME]],
+          doGenerateSubmoduleConfigurations: false,
+          extensions: [
+            [$class: 'CloneOption',
+            depth: 1,
+            shallow: true,
+            noTags: false,
+            timeout: 10]
+          ],
+          userRemoteConfigs: [[
+            url: 'https://github.com/mi-org/cicdcompletelab-react.git',
+            credentialsId: 'github-creds'
+          ]]
+        ])
       }
     }
+
 
     stage('Matrix Build & Test') {
       matrix {
